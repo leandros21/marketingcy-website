@@ -1,0 +1,29 @@
+{
+  "redirects": [
+    {
+      "source": "/seo/",
+      "destination": "/seo-cyprus/",
+      "permanent": true
+    },
+    {
+      "source": "/web-design/",
+      "destination": "/web-development-cyprus/",
+      "permanent": true
+    },
+    {
+      "source": "/ppc/",
+      "destination": "/ppc-agency-cyprus/",
+      "permanent": true
+    },
+    {
+      "source": "/social-media/",
+      "destination": "/social-media-advertising-solutions/",
+      "permanent": true
+    },
+    {
+      "source": "/email-marketing/",
+      "destination": "/email-marketing-solutions/",
+      "permanent": true
+    }
+  ]
+}
