@@ -8,6 +8,11 @@ const pageStore={
  async save(p){return supabase.from('cms_pages').upsert({slug:p.slug,title:p.title,draft_body:p.body||'',draft_seo_title:p.meta||'',draft_meta_description:p.description||'',draft_heading:p.heading||p.title,draft_summary:p.summary||'',updated_at:new Date().toISOString()},{onConflict:'slug'})}
 };
 
+const portfolioStore={
+ async load(){const r=await supabase.from('cms_portfolio').select('*').order('portfolio_order');if(r.error)throw r.error;return r.data},
+ async save(rows,publish){for(const row of rows){const payload={...row,updated_at:new Date().toISOString()};let r=await supabase.from('cms_portfolio').upsert(payload,{onConflict:'id'});if(r.error)throw r.error;if(publish){r=await supabase.from('cms_portfolio_live').upsert(payload,{onConflict:'id'});if(r.error)throw r.error}}return true},
+ async upload(file,id){if(!['image/jpeg','image/png','image/webp'].includes(file.type))throw Error('Use JPG, PNG or WebP');if(file.size>5242880)throw Error('Maximum image size is 5 MB');const ext=file.type.split('/')[1].replace('jpeg','jpg');const path='project-'+id+'-'+Date.now()+'.'+ext;const r=await supabase.storage.from('cms-portfolio').upload(path,file,{contentType:file.type});if(r.error)throw r.error;return supabase.storage.from('cms-portfolio').getPublicUrl(path).data.publicUrl}
+};window.marketingcyPortfolioStore=portfolioStore;
 const servicesStore={
  async load(){const [cards,section]=await Promise.all([supabase.from('cms_services').select('*').order('sort_order'),supabase.from('cms_services_section').select('*').eq('id',1).single()]);if(cards.error)throw cards.error;if(section.error)throw section.error;return {cards:cards.data,section:section.data}},
  async save(cards,section,publish){let a=await supabase.from('cms_services_section').upsert({...section,id:1,updated_at:new Date().toISOString()});if(a.error)throw a.error;for(const card of cards){a=await supabase.from('cms_services').upsert({...card,updated_at:new Date().toISOString()},{onConflict:'id'});if(a.error)throw a.error}if(publish){a=await supabase.from('cms_services_section_live').upsert({...section,id:1,updated_at:new Date().toISOString()});if(a.error)throw a.error;for(const card of cards){a=await supabase.from('cms_services_live').upsert({...card,updated_at:new Date().toISOString()},{onConflict:'id'});if(a.error)throw a.error}}return true}
