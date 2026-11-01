@@ -8,6 +8,10 @@ const pageStore={
  async save(p){return supabase.from('cms_pages').upsert({slug:p.slug,title:p.title,draft_body:p.body||'',draft_seo_title:p.meta||'',draft_meta_description:p.description||'',draft_heading:p.heading||p.title,draft_summary:p.summary||'',updated_at:new Date().toISOString()},{onConflict:'slug'})}
 };
 
+const servicesStore={
+ async load(){const [cards,section]=await Promise.all([supabase.from('cms_services').select('*').order('sort_order'),supabase.from('cms_services_section').select('*').eq('id',1).single()]);if(cards.error)throw cards.error;if(section.error)throw section.error;return {cards:cards.data,section:section.data}},
+ async save(cards,section,publish){let a=await supabase.from('cms_services_section').upsert({...section,id:1,updated_at:new Date().toISOString()});if(a.error)throw a.error;for(const card of cards){a=await supabase.from('cms_services').upsert({...card,updated_at:new Date().toISOString()},{onConflict:'id'});if(a.error)throw a.error}if(publish){a=await supabase.from('cms_services_section_live').upsert({...section,id:1,updated_at:new Date().toISOString()});if(a.error)throw a.error;for(const card of cards){a=await supabase.from('cms_services_live').upsert({...card,updated_at:new Date().toISOString()},{onConflict:'id'});if(a.error)throw a.error}}return true}
+};window.marketingcyServicesStore=servicesStore;
 const sliderStore={
  async load(){return supabase.from('cms_slider_slides').select('*').order('id')},
  async save(row){return supabase.from('cms_slider_slides').upsert({...row,updated_at:new Date().toISOString()},{onConflict:'id'})},
