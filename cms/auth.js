@@ -8,6 +8,12 @@ const pageStore={
  async save(p){return supabase.from('cms_pages').upsert({slug:p.slug,title:p.title,draft_body:p.body||'',draft_seo_title:p.meta||'',draft_meta_description:p.description||'',draft_heading:p.heading||p.title,draft_summary:p.summary||'',updated_at:new Date().toISOString()},{onConflict:'slug'})}
 };
 
+const mediaStore={
+ async list(){const r=await supabase.from('cms_media').select('*').order('created_at',{ascending:false});if(r.error)throw r.error;return r.data},
+ async upload(file,category){const allowed=['image/jpeg','image/png','image/webp','image/gif','image/svg+xml','application/pdf','text/plain'];if(!allowed.includes(file.type))throw Error('Unsupported file type');if(file.size>10485760)throw Error('Maximum file size is 10 MB');const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');const path=Date.now()+'-'+Math.random().toString(36).slice(2)+'-'+safe;const u=await supabase.storage.from('cms-media').upload(path,file,{contentType:file.type});if(u.error)throw u.error;const url=supabase.storage.from('cms-media').getPublicUrl(path).data.publicUrl;const r=await supabase.from('cms_media').insert({name:file.name,category,url,bucket:'cms-media',storage_path:path,mime_type:file.type,size_bytes:file.size});if(r.error)throw Error('File uploaded but library registration failed: '+r.error.message);return url},
+ async update(id,changes){const r=await supabase.from('cms_media').update(changes).eq('id',id);if(r.error)throw r.error},
+ async remove(item){if(item.bucket&&item.storage_path){const r=await supabase.storage.from(item.bucket).remove([item.storage_path]);if(r.error)throw r.error}const r=await supabase.from('cms_media').delete().eq('id',item.id);if(r.error)throw r.error}
+};window.marketingcyMediaStore=mediaStore;
 const portfolioStore={
  async load(){const r=await supabase.from('cms_portfolio').select('*').order('portfolio_order');if(r.error)throw r.error;return r.data},
  async save(rows,publish){for(const row of rows){const payload={...row,updated_at:new Date().toISOString()};let r=await supabase.from('cms_portfolio').upsert(payload,{onConflict:'id'});if(r.error)throw r.error;if(publish){r=await supabase.from('cms_portfolio_live').upsert(payload,{onConflict:'id'});if(r.error)throw r.error}}return true},
