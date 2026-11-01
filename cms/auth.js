@@ -11,6 +11,7 @@ const pageStore={
 const portfolioStore={
  async load(){const r=await supabase.from('cms_portfolio').select('*').order('portfolio_order');if(r.error)throw r.error;return r.data},
  async save(rows,publish){for(const row of rows){const payload={...row,updated_at:new Date().toISOString()};let r=await supabase.from('cms_portfolio').upsert(payload,{onConflict:'id'});if(r.error)throw r.error;if(publish){r=await supabase.from('cms_portfolio_live').upsert(payload,{onConflict:'id'});if(r.error)throw r.error}}return true},
+ async remove(id){let a=await supabase.from('cms_portfolio_live').delete().eq('id',id);if(a.error)throw a.error;a=await supabase.from('cms_portfolio').delete().eq('id',id);if(a.error)throw a.error;return true},
  async upload(file,id){if(!['image/jpeg','image/png','image/webp'].includes(file.type))throw Error('Use JPG, PNG or WebP');if(file.size>5242880)throw Error('Maximum image size is 5 MB');const ext=file.type.split('/')[1].replace('jpeg','jpg');const path='project-'+id+'-'+Date.now()+'.'+ext;const r=await supabase.storage.from('cms-portfolio').upload(path,file,{contentType:file.type});if(r.error)throw r.error;return supabase.storage.from('cms-portfolio').getPublicUrl(path).data.publicUrl}
 };window.marketingcyPortfolioStore=portfolioStore;
 const servicesStore={
