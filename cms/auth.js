@@ -7,6 +7,13 @@ const pageStore={
  async publish(p){return supabase.from('cms_pages').update({title:p.title,draft_body:p.body||'',draft_seo_title:p.meta||'',draft_meta_description:p.description||'',draft_heading:p.heading||p.title,draft_summary:p.summary||'',published_body:p.body||'',published_seo_title:p.meta||'',published_meta_description:p.description||'',published_heading:p.heading||p.title,published_summary:p.summary||'',status:'published',updated_at:new Date().toISOString()}).eq('slug',p.slug).select('slug').single()},
  async save(p){return supabase.from('cms_pages').upsert({slug:p.slug,title:p.title,draft_body:p.body||'',draft_seo_title:p.meta||'',draft_meta_description:p.description||'',draft_heading:p.heading||p.title,draft_summary:p.summary||'',updated_at:new Date().toISOString()},{onConflict:'slug'})}
 };
+
+const sliderStore={
+ async load(){return supabase.from('cms_slider_slides').select('*').order('id')},
+ async save(row){return supabase.from('cms_slider_slides').upsert({...row,updated_at:new Date().toISOString()},{onConflict:'id'})},
+ async publish(row){const saved=await this.save(row);if(saved.error)return saved;return supabase.from('cms_slider_live').upsert({...row,updated_at:new Date().toISOString()},{onConflict:'id'})},
+ async upload(file,id){if(!['image/jpeg','image/png','image/webp'].includes(file.type))throw Error('Use JPG, PNG or WebP');if(file.size>5*1024*1024)throw Error('Image must be under 5MB');const ext=file.type==='image/png'?'png':file.type==='image/webp'?'webp':'jpg';const path='slide-'+id+'-'+Date.now()+'.'+ext;const result=await supabase.storage.from('cms-slider').upload(path,file,{contentType:file.type,upsert:false});if(result.error)throw result.error;return supabase.storage.from('cms-slider').getPublicUrl(path).data.publicUrl}
+};window.marketingcySliderStore=sliderStore;
 let sequence=0;
 function locked(message=''){app.style.display='none';screen.style.display='grid';error.textContent=message;}
 async function check(){const n=++sequence;try{const {data:{user},error:e}=await supabase.auth.getUser();if(n!==sequence)return;if(e||!user){locked();return}const {data,error:dbError}=await supabase.from('cms_admins').select('user_id').eq('user_id',user.id).maybeSingle();if(n!==sequence)return;if(dbError||!data){locked('This account is not authorised for MarketingCy CMS.');return}document.getElementById('auth-identity').textContent=user.email||'Administrator';screen.style.display='none';app.style.display='grid';if(window.cmsConnect)await window.cmsConnect(pageStore)}catch{if(n===sequence)locked('Unable to verify your account. Please try again.')}}
