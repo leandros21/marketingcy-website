@@ -25,5 +25,19 @@
       "destination": "/email-marketing-solutions/",
       "permanent": true
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/robots.txt",
+      "destination": "/api/seo-file?type=robots"
+    },
+    {
+      "source": "/llms.txt",
+      "destination": "/api/seo-file?type=llms"
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api/seo-file?type=sitemap"
+    }
   ]
 }
