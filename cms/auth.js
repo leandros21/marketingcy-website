@@ -8,6 +8,13 @@ const pageStore={
  async save(p){return supabase.from('cms_pages').upsert({slug:p.slug,title:p.title,draft_body:p.body||'',draft_seo_title:p.meta||'',draft_meta_description:p.description||'',draft_heading:p.heading||p.title,draft_summary:p.summary||'',updated_at:new Date().toISOString()},{onConflict:'slug'})}
 };
 
+const seoStore={
+ async files(){const r=await supabase.from('cms_seo_files').select('*');if(r.error)throw r.error;return r.data},
+ async save(key,value,publish){const changes=publish?{draft:value,published:value,updated_at:new Date().toISOString()}:{draft:value,updated_at:new Date().toISOString()};const r=await supabase.from('cms_seo_files').update(changes).eq('key',key);if(r.error)throw r.error},
+ async redirects(){const r=await supabase.from('cms_seo_redirects').select('*').order('id');if(r.error)throw r.error;return r.data},
+ async addRedirect(source,destination){const r=await supabase.from('cms_seo_redirects').insert({source,destination});if(r.error)throw r.error},
+ async removeRedirect(id){const r=await supabase.from('cms_seo_redirects').delete().eq('id',id);if(r.error)throw r.error}
+};window.marketingcySeoStore=seoStore;
 const mediaStore={
  async list(){const r=await supabase.from('cms_media').select('*').order('created_at',{ascending:false});if(r.error)throw r.error;return r.data},
  async upload(file,category){const allowed=['image/jpeg','image/png','image/webp','image/gif','image/svg+xml','application/pdf','text/plain'];if(!allowed.includes(file.type))throw Error('Unsupported file type');if(file.size>10485760)throw Error('Maximum file size is 10 MB');const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');const path=Date.now()+'-'+Math.random().toString(36).slice(2)+'-'+safe;const u=await supabase.storage.from('cms-media').upload(path,file,{contentType:file.type});if(u.error)throw u.error;const url=supabase.storage.from('cms-media').getPublicUrl(path).data.publicUrl;const r=await supabase.from('cms_media').insert({name:file.name,category,url,bucket:'cms-media',storage_path:path,mime_type:file.type,size_bytes:file.size});if(r.error)throw Error('File uploaded but library registration failed: '+r.error.message);return url},
