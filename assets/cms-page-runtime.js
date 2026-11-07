@@ -14,7 +14,7 @@
   const allowed=new Set(['STRONG','B','EM','I','A','BR','SPAN','U','SMALL','SUP','SUB']);
   function safe(html){
    const template=document.createElement('template');template.innerHTML=html;
-   function clean(parent){for(const child of [...parent.childNodes]){if(child.nodeType===8){child.remove();continue}if(child.nodeType!==1)continue;if(!allowed.has(child.tagName)){child.replaceWith(...child.childNodes);clean(parent);continue}for(const attr of [...child.attributes]){if(!(child.tagName==='A'&&attr.name==='href'&&/^(https?:|\\/|#|mailto:)/i.test(attr.value)))child.removeAttribute(attr.name)}if(child.tagName==='A')child.rel='noopener noreferrer';clean(child)}}
+   function clean(parent){for(const child of [...parent.childNodes]){if(child.nodeType===8){child.remove();continue}if(child.nodeType!==1)continue;if(!allowed.has(child.tagName)){child.replaceWith(...child.childNodes);clean(parent);continue}for(const attr of [...child.attributes]){if(!(child.tagName==='A'&&attr.name==='href'&&(/^(https?:|#|mailto:)/i.test(attr.value)||attr.value.startsWith('/'))))child.removeAttribute(attr.name)}if(child.tagName==='A')child.rel='noopener noreferrer';clean(child)}}
    clean(template.content);return template.innerHTML
   }
   body.blocks.forEach((block,i)=>{const node=nodes[i];if(node&&block&&node.tagName===block.tag&&typeof block.html==='string'&&block.html.length<30000){node.innerHTML=safe(block.html)}});
