@@ -1,16 +1,25 @@
-// Load the browser SDK from a backup CDN if the primary one is unavailable.
-let createClient;
-try {
-  ({ createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/+esm'));
-} catch (primaryError) {
-  try {
-    ({ createClient } = await import('https://esm.sh/@supabase/supabase-js@2.57.0'));
-  } catch (backupError) {
-    const message = document.getElementById('auth-error');
-    if (message) message.textContent = 'Cannot load the login service. Please refresh the page or try another network.';
-    throw backupError;
+// Load the UMD browser bundle without depending on ES-module CDN imports.
+async function loadSupabaseSDK() {
+  const sources = [
+    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.js',
+    'https://unpkg.com/@supabase/supabase-js@2.57.0/dist/umd/supabase.js'
+  ];
+  for (const src of sources) {
+    try {
+      await new Promise((resolve,reject)=>{
+        const script=document.createElement('script');script.src=src;
+        script.onload=resolve;script.onerror=()=>reject(new Error('Unable to load '+src));
+        document.head.appendChild(script);
+        setTimeout(()=>reject(new Error('SDK loading timed out')),10000);
+      });
+      if (window.supabase?.createClient) return window.supabase.createClient;
+    } catch (e) { /* try next CDN */ }
   }
+  throw new Error('Login service could not load. Try another network or browser.');
 }
+(async function initCMSAuth(){
+try {
+const createClient = await loadSupabaseSDK();
 const supabase=createClient('https://lgrqurlpkogsbiidmuaa.supabase.co','sb_publishable_66YqqBDBC3TwHFeVu9gCDg_r1mDPJB_',{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:false}});
 const screen=document.getElementById('auth-screen'),app=document.getElementById('cms-app'),error=document.getElementById('auth-error'),form=document.getElementById('auth-form'),button=document.getElementById('auth-submit');
 
@@ -56,3 +65,9 @@ form.addEventListener('submit',async event=>{event.preventDefault();button.disab
 document.getElementById('logout').addEventListener('click',async()=>{locked();await supabase.auth.signOut();document.getElementById('auth-password').value=''});
 supabase.auth.onAuthStateChange((event)=>{if(event==='SIGNED_OUT')locked();});
 check();
+
+} catch(e) {
+  const error=document.getElementById('auth-error');
+  if(error) error.textContent=e.message||'Unable to start CMS login.';
+}
+})();
