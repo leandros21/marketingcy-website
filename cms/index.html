@@ -74,7 +74,7 @@ window.cmsAuthReady=false;
  form.addEventListener('submit',function(event){
   event.preventDefault();
   if(!window.cmsAuthReady){
-   error.textContent='The login script has not loaded. Microsoft Edge may be blocking an external authentication library. Try disabling Tracking Prevention for this site or check the browser console.';
+   error.textContent='The CMS login script did not initialize. Please open Developer Tools (F12), select Console, and share the first red error. No credentials are needed.';
   }
  },true);
  window.addEventListener('error',function(event){
