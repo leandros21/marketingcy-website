@@ -1,13 +1,27 @@
-import { createHash } from 'node:crypto';
+import { createHash, createHmac, randomInt, timingSafeEqual } from 'node:crypto';
 export default async function handler(req,res){
  res.setHeader('Cache-Control','no-store');
+ const token=process.env.MARKETINGCY_ENQUIRY_TOKEN;
+ if(!token)return res.status(503).json({error:'Enquiry service is not configured'});
+ if(req.method==='GET'){
+  const a=randomInt(2,10),b=randomInt(1,9),expires=Date.now()+10*60*1000;
+  const payload=[a,b,expires].join(':');
+  const signature=createHmac('sha256',token).update(payload).digest('hex');
+  return res.status(200).json({question:'What is '+a+' + '+b+'?',challenge:Buffer.from(payload).toString('base64url')+'.'+signature});
+ }
  if(req.method!=='POST')return res.status(405).json({error:'Method not allowed'});
  const body=req.body||{};
  if(typeof body.website==='string'&&body.website.trim())return res.status(400).json({error:'Invalid submission'});
  const name=String(body.name||'').trim(),telephone=String(body.telephone||'').trim(),service=String(body.service||'').trim(),email=String(body.email||'').trim(),message=String(body.message||'').trim(),contact=body.formType==='contact';
  if(name.length<2||name.length>120||(contact?(email.length<5||email.length>254||!email.includes('@')||message.length<5||message.length>5000):(telephone.length<5||telephone.length>40||service.length<2||service.length>100)))return res.status(400).json({error:'Please complete all required fields'});
- const token=process.env.MARKETINGCY_ENQUIRY_TOKEN;
- if(!token)return res.status(503).json({error:'Enquiry service is not configured'});
+ const challenge=String(body.mathChallenge||''),answer=String(body.mathAnswer??'').trim();
+ const parts=challenge.split('.');
+ if(parts.length!==2||!/^[a-f0-9]{64}$/.test(parts[1])||!/^[0-9]+$/.test(answer))return res.status(400).json({error:'Invalid math verification. Please try again.'});
+ const payload=Buffer.from(parts[0],'base64url').toString('utf8');
+ const expected=createHmac('sha256',token).update(payload).digest();
+ const received=Buffer.from(parts[1],'hex');
+ const nums=payload.match(/^(\d+):(\d+):(\d{13})$/);
+ if(!timingSafeEqual(expected,received)||!nums||Number(nums[3])<Date.now()||Number(nums[3])>Date.now()+10*60*1000||Number(answer)!==Number(nums[1])+Number(nums[2]))return res.status(400).json({error:'Incorrect or expired math answer. Please try again.'});
  const forwarded=String(req.headers['x-forwarded-for']||'').split(',')[0].trim();
  const ip=String(req.headers['x-vercel-forwarded-for']||forwarded||req.socket?.remoteAddress||'unknown').split(',')[0].trim();
  const visitorHash=createHash('sha256').update(token+':'+ip).digest('hex');
