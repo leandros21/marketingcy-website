@@ -90,4 +90,5 @@ async function signOut(){manualSignOut=true;++sequence;locked('You have signed o
 document.getElementById('logout').addEventListener('click',signOut);
 document.getElementById('top-logout').addEventListener('click',signOut);
 supabase.auth.onAuthStateChange((event)=>{if(event==='SIGNED_OUT'){++sequence;locked(manualSignOut?'You have signed out.':sessionExpiredMessage)}});
+window.cmsAuthReady=true;
 check({initial:true});
