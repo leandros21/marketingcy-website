@@ -1,4 +1,16 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.0';
+let createClient;
+try {
+ ({createClient}=await import('https://esm.sh/@supabase/supabase-js@2.57.0'));
+} catch (primaryError) {
+ try {
+  ({createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/+esm'));
+ } catch (fallbackError) {
+  const message='The CMS authentication library could not load. In Microsoft Edge, check Tracking Prevention, extensions, or network restrictions, then refresh. ('+(fallbackError?.message||'Network error')+')';
+  const el=document.getElementById('auth-error');
+  if(el)el.textContent=message;
+  throw fallbackError;
+ }
+}
 const supabase=createClient('https://lgrqurlpkogsbiidmuaa.supabase.co','sb_publishable_66YqqBDBC3TwHFeVu9gCDg_r1mDPJB_',{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:true}});
 const screen=document.getElementById('auth-screen'),app=document.getElementById('cms-app'),error=document.getElementById('auth-error'),form=document.getElementById('auth-form'),button=document.getElementById('auth-submit');
 
