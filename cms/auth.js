@@ -39,13 +39,15 @@ const sliderStore={
  async upload(file,id){if(!['image/jpeg','image/png','image/webp'].includes(file.type))throw Error('Use JPG, PNG or WebP');if(file.size>5*1024*1024)throw Error('Image must be under 5MB');const ext=file.type==='image/png'?'png':file.type==='image/webp'?'webp':'jpg';const path='slide-'+id+'-'+Date.now()+'.'+ext;const result=await supabase.storage.from('cms-slider').upload(path,file,{contentType:file.type,upsert:false});if(result.error)throw result.error;return supabase.storage.from('cms-slider').getPublicUrl(path).data.publicUrl}
 };window.marketingcySliderStore=sliderStore;
 let sequence=0;
+let manualSignOut=false;
+const sessionExpiredMessage='Your session may have expired or browser storage was cleared. Please sign in again.';
 function locked(message=''){app.style.display='none';screen.style.display='grid';error.textContent=message;}
 async function check({initial=false}={}){
  const n=++sequence;
  try{
   const {data:{user},error:authError}=await supabase.auth.getUser();
   if(n!==sequence)return false;
-  if(authError||!user){locked(initial?'':'Your session could not be verified. Please sign in again.');return false}
+  if(authError||!user){locked(authError?sessionExpiredMessage:(initial?'':sessionExpiredMessage));return false}
   const {data,error:dbError}=await supabase.from('cms_admins').select('user_id').eq('user_id',user.id).maybeSingle();
   if(n!==sequence)return false;
   if(dbError){locked('Could not check administrator access: '+dbError.message);return false}
@@ -72,8 +74,8 @@ form.addEventListener('submit',async event=>{
  }catch(e){locked('Sign-in error: '+(e?.message||'Unable to connect to the authentication service.'))}
  finally{button.disabled=false}
 });
-async function signOut(){++sequence;locked();await supabase.auth.signOut();document.getElementById('auth-password').value=''}
+async function signOut(){manualSignOut=true;++sequence;locked('You have signed out.');try{await supabase.auth.signOut()}finally{manualSignOut=false;document.getElementById('auth-password').value=''}}
 document.getElementById('logout').addEventListener('click',signOut);
 document.getElementById('top-logout').addEventListener('click',signOut);
-supabase.auth.onAuthStateChange((event)=>{if(event==='SIGNED_OUT'){++sequence;locked('Your session ended. Please sign in again.')}});
+supabase.auth.onAuthStateChange((event)=>{if(event==='SIGNED_OUT'){++sequence;locked(manualSignOut?'You have signed out.':sessionExpiredMessage)}});
 check({initial:true});
