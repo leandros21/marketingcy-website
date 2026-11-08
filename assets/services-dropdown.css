@@ -9,7 +9,7 @@
 .service-icon svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .service-copy{display:grid;gap:4px;flex:1;min-width:0}
 .service-copy small{font-size:12px;font-weight:400;color:#586a82;line-height:1.4}
-.service-arrow{font-size:22px;font-weight:400;color:#7d8da5}
+.services-dropdown .services-menu .service-arrow{display:none!important}
 .services-dropdown .services-menu .service-entry+.service-entry{border-top:1px solid #f0f3f9}
 @media(max-width:760px){.services-dropdown .services-menu{left:0;transform:translateY(9px);width:min(420px,calc(100vw - 32px))}.services-dropdown[open] .services-menu{transform:translateY(0)}.services-dropdown .services-menu .service-entry{padding:10px}.service-icon{width:42px;height:42px}}
 @media(prefers-reduced-motion:reduce){.services-dropdown .services-menu{transition:none}}
