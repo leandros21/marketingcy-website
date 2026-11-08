@@ -40,10 +40,40 @@ const sliderStore={
 };window.marketingcySliderStore=sliderStore;
 let sequence=0;
 function locked(message=''){app.style.display='none';screen.style.display='grid';error.textContent=message;}
-async function check(){const n=++sequence;try{const {data:{user},error:e}=await supabase.auth.getUser();if(n!==sequence)return;if(e||!user){locked();return}const {data,error:dbError}=await supabase.from('cms_admins').select('user_id').eq('user_id',user.id).maybeSingle();if(n!==sequence)return;if(dbError||!data){locked('This account is not authorised for MarketingCy CMS.');return}document.getElementById('auth-identity').textContent=user.email||'Administrator';screen.style.display='none';app.style.display='grid';if(window.cmsConnect)await window.cmsConnect(pageStore)}catch{if(n===sequence)locked('Unable to verify your account. Please try again.')}}
-form.addEventListener('submit',async event=>{event.preventDefault();button.disabled=true;error.textContent='Signing in…';try{const {error:e}=await Promise.race([supabase.auth.signInWithPassword({email:document.getElementById('auth-email').value.trim(),password:document.getElementById('auth-password').value}),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Authentication timed out. Please check your connection and try again.')),15000))]);if(e){locked('Sign-in failed: '+(e.message||'Check your email and password.'));return}await check()}catch(e){locked('Sign-in error: '+(e?.message||'Unable to connect to the authentication service.'))}finally{button.disabled=false}});
-async function signOut(){locked();await supabase.auth.signOut();document.getElementById('auth-password').value=''}
+async function check({initial=false}={}){
+ const n=++sequence;
+ try{
+  const {data:{user},error:authError}=await supabase.auth.getUser();
+  if(n!==sequence)return false;
+  if(authError||!user){locked(initial?'':'Your session could not be verified. Please sign in again.');return false}
+  const {data,error:dbError}=await supabase.from('cms_admins').select('user_id').eq('user_id',user.id).maybeSingle();
+  if(n!==sequence)return false;
+  if(dbError){locked('Could not check administrator access: '+dbError.message);return false}
+  if(!data){locked('This account is not authorised for MarketingCy CMS.');return false}
+  document.getElementById('auth-identity').textContent=user.email||'Administrator';
+  screen.style.display='none';app.style.display='grid';
+  if(window.cmsConnect)await window.cmsConnect(pageStore);
+  return true;
+ }catch(e){if(n===sequence)locked('Unable to load the CMS: '+(e?.message||'Please try again.'));return false}
+}
+form.addEventListener('submit',async event=>{
+ event.preventDefault();
+ button.disabled=true;error.textContent='Signing in…';
+ try{
+  const email=document.getElementById('auth-email').value.trim();
+  const password=document.getElementById('auth-password').value;
+  if(!email||!password){locked('Enter your email and password to sign in.');return}
+  const {error:signInError}=await Promise.race([
+   supabase.auth.signInWithPassword({email,password}),
+   new Promise((_,reject)=>setTimeout(()=>reject(new Error('Authentication timed out. Please check your connection and try again.')),15000))
+  ]);
+  if(signInError){locked('Sign-in failed: '+(signInError.message||'Check your email and password.'));return}
+  await check();
+ }catch(e){locked('Sign-in error: '+(e?.message||'Unable to connect to the authentication service.'))}
+ finally{button.disabled=false}
+});
+async function signOut(){++sequence;locked();await supabase.auth.signOut();document.getElementById('auth-password').value=''}
 document.getElementById('logout').addEventListener('click',signOut);
 document.getElementById('top-logout').addEventListener('click',signOut);
-supabase.auth.onAuthStateChange((event)=>{if(event==='SIGNED_OUT')locked();});
-check();
+supabase.auth.onAuthStateChange((event)=>{if(event==='SIGNED_OUT'){++sequence;locked('Your session ended. Please sign in again.')}});
+check({initial:true});
