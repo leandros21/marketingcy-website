@@ -55,6 +55,8 @@ const sliderStore={
  async publish(row){const saved=await this.save(row);if(saved.error)return saved;return supabase.from('cms_slider_live').upsert({...row,updated_at:new Date().toISOString()},{onConflict:'id'})},
  async upload(file,id){if(!['image/jpeg','image/png','image/webp'].includes(file.type))throw Error('Use JPG, PNG or WebP');if(file.size>5*1024*1024)throw Error('Image must be under 5MB');const ext=file.type==='image/png'?'png':file.type==='image/webp'?'webp':'jpg';const path='slide-'+id+'-'+Date.now()+'.'+ext;const result=await supabase.storage.from('cms-slider').upload(path,file,{contentType:file.type,upsert:false});if(result.error)throw result.error;return supabase.storage.from('cms-slider').getPublicUrl(path).data.publicUrl}
 };window.marketingcySliderStore=sliderStore;
+
+const navigationStore={async load(){return supabase.from('cms_navigation').select('*')},async save(key,items,publish){const {data,error}=await supabase.from('cms_navigation').select('published_items').eq('menu_key',key).maybeSingle();if(error)throw error;const row={menu_key:key,draft_items:items,published_items:publish?items:(data?.published_items||[]),updated_at:new Date().toISOString()};const result=await supabase.from('cms_navigation').upsert(row,{onConflict:'menu_key'});if(result.error)throw result.error;return row}};window.marketingcyNavigationStore=navigationStore;
 let sequence=0;
 let manualSignOut=false;
 const sessionExpiredMessage='Your session may have expired or browser storage was cleared. Please sign in again.';
