@@ -57,6 +57,12 @@ const sliderStore={
 };window.marketingcySliderStore=sliderStore;
 
 const navigationStore={async load(){return supabase.from('cms_navigation').select('*')},async save(key,items,publish){const {data,error}=await supabase.from('cms_navigation').select('published_items').eq('menu_key',key).maybeSingle();if(error)throw error;const row={menu_key:key,draft_items:items,published_items:publish?items:(data?.published_items||[]),updated_at:new Date().toISOString()};const result=await supabase.from('cms_navigation').upsert(row,{onConflict:'menu_key'});if(result.error)throw result.error;return row}};window.marketingcyNavigationStore=navigationStore;
+const rolesStore={
+ async me(){const {data,error}=await supabase.from('cms_user_roles').select('role').single();if(error)throw error;return data.role},
+ async manage(input){const {data,error}=await supabase.functions.invoke('cms-manage-users',{body:input});if(error)throw error;if(data?.error)throw Error(data.error);return data},
+ async blogList(){const {data,error}=await supabase.from('cms_blog_posts').select('*').order('updated_at',{ascending:false});if(error)throw error;return data||[]},
+ async blogSave(p){const {data:{user},error:ue}=await supabase.auth.getUser();if(ue||!user)throw Error('Please sign in');const payload={slug:p.slug,title:p.title,body:p.body||'',seo_title:p.meta||'',meta_description:p.description||'',status:p.status==='Published'?'published':'draft',updated_at:new Date().toISOString(),...(p.status==='Published'?{published_at:new Date().toISOString()}:{})};if(p.id){const {data,error}=await supabase.from('cms_blog_posts').update(payload).eq('id',p.id).select().single();if(error)throw error;return data}const {data,error}=await supabase.from('cms_blog_posts').insert({...payload,author_id:user.id}).select().single();if(error)throw error;return data}
+};window.marketingcyRolesStore=rolesStore;
 let sequence=0;
 let manualSignOut=false;
 const sessionExpiredMessage='Your session may have expired or browser storage was cleared. Please sign in again.';
@@ -67,10 +73,10 @@ async function check({initial=false}={}){
   const {data:{user},error:authError}=await supabase.auth.getUser();
   if(n!==sequence)return false;
   if(authError||!user){locked(authError?sessionExpiredMessage:(initial?'':sessionExpiredMessage));return false}
-  const {data,error:dbError}=await supabase.from('cms_admins').select('user_id').eq('user_id',user.id).maybeSingle();
+  const {data,error:dbError}=await supabase.from('cms_user_roles').select('role').eq('user_id',user.id).maybeSingle();
   if(n!==sequence)return false;
   if(dbError){locked('Could not check administrator access: '+dbError.message);return false}
-  if(!data){locked('This account is not authorised for MarketingCy CMS.');return false}
+  if(!data){locked('This account is not authorised for MarketingCy CMS.');return false} window.cmsUserRole=data.role;if(window.cmsApplyRole)window.cmsApplyRole(data.role);
   document.getElementById('auth-identity').textContent=user.email||'Administrator';
   screen.style.display='none';app.style.display='grid';
   if(window.cmsConnect)await window.cmsConnect(pageStore);
