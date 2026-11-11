@@ -11,6 +11,7 @@ try {
   throw fallbackError;
  }
 }
+const cmsLinkType=new URLSearchParams(window.location.hash.slice(1)).get('type')||new URLSearchParams(window.location.search).get('type');
 const supabase=createClient('https://lgrqurlpkogsbiidmuaa.supabase.co','sb_publishable_66YqqBDBC3TwHFeVu9gCDg_r1mDPJB_',{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:true}});
 const screen=document.getElementById('auth-screen'),app=document.getElementById('cms-app'),error=document.getElementById('auth-error'),form=document.getElementById('auth-form'),button=document.getElementById('auth-submit');
 
@@ -64,6 +65,11 @@ const rolesStore={
  async blogSave(p){const {data:{user},error:ue}=await supabase.auth.getUser();if(ue||!user)throw Error('Please sign in');const payload={slug:p.slug,title:p.title,body:p.body||'',seo_title:p.meta||'',meta_description:p.description||'',status:p.status==='Published'?'published':'draft',updated_at:new Date().toISOString(),...(p.status==='Published'?{published_at:new Date().toISOString()}:{})};if(p.id){const {data,error}=await supabase.from('cms_blog_posts').update(payload).eq('id',p.id).select().single();if(error)throw error;return data}const {data,error}=await supabase.from('cms_blog_posts').insert({...payload,author_id:user.id}).select().single();if(error)throw error;return data}
 };window.marketingcyRolesStore=rolesStore;
 let sequence=0;
+let passwordSetupPending=cmsLinkType==='invite'||cmsLinkType==='recovery';
+const passwordForm=document.getElementById('auth-set-password-form'),loginForm=document.getElementById('auth-form'),forgotButton=document.getElementById('auth-forgot');
+function showPasswordSetup(){app.style.display='none';screen.style.display='grid';loginForm.style.display='none';forgotButton.style.display='none';passwordForm.style.display='block';document.getElementById('auth-set-password-heading').textContent=cmsLinkType==='recovery'?'Reset your password':'Create your password';error.textContent='';}
+passwordForm.addEventListener('submit',async event=>{event.preventDefault();const p=document.getElementById('auth-new-password').value,c=document.getElementById('auth-confirm-password').value,msg=document.getElementById('auth-set-password-message');if(p.length<12||p!==c){msg.textContent='Use at least 12 characters and ensure passwords match.';return}const {error:e}=await supabase.auth.updateUser({password:p});if(e){msg.textContent='Could not save password: '+e.message;return}passwordSetupPending=false;passwordForm.style.display='none';loginForm.style.display='block';forgotButton.style.display='block';history.replaceState(null,'',window.location.pathname);msg.textContent='';await check();});
+forgotButton.addEventListener('click',async()=>{const email=document.getElementById('auth-email').value.trim();if(!email){error.textContent='Enter your email address above first.';return}const {error:e}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+'/cms/'});error.textContent=e?'Could not send reset email: '+e.message:'If this email is registered, a password reset link has been sent.';});
 let manualSignOut=false;
 const sessionExpiredMessage='Your session may have expired or browser storage was cleared. Please sign in again.';
 function locked(message=''){app.style.display='none';screen.style.display='grid';error.textContent=message;}
@@ -72,7 +78,7 @@ async function check({initial=false}={}){
  try{
   const {data:{user},error:authError}=await supabase.auth.getUser();
   if(n!==sequence)return false;
-  if(authError||!user){locked(authError?sessionExpiredMessage:(initial?'':sessionExpiredMessage));return false}
+  if(authError||!user){locked(authError?sessionExpiredMessage:(initial?'':sessionExpiredMessage));return false}if(passwordSetupPending){showPasswordSetup();return true}
   const {data,error:dbError}=await supabase.from('cms_user_roles').select('role').eq('user_id',user.id).maybeSingle();
   if(n!==sequence)return false;
   if(dbError){locked('Could not check administrator access: '+dbError.message);return false}
@@ -102,6 +108,6 @@ form.addEventListener('submit',async event=>{
 async function signOut(){manualSignOut=true;++sequence;locked('You have signed out.');try{await supabase.auth.signOut()}finally{manualSignOut=false;document.getElementById('auth-password').value=''}}
 document.getElementById('logout').addEventListener('click',signOut);
 document.getElementById('top-logout').addEventListener('click',signOut);
-supabase.auth.onAuthStateChange((event)=>{if(event==='SIGNED_OUT'){++sequence;locked(manualSignOut?'You have signed out.':sessionExpiredMessage)}});
+supabase.auth.onAuthStateChange((event)=>{if(event==='PASSWORD_RECOVERY'){passwordSetupPending=true;setTimeout(showPasswordSetup,0)}if(event==='SIGNED_IN'&&passwordSetupPending){setTimeout(showPasswordSetup,0)}if(event==='SIGNED_OUT'){++sequence;locked(manualSignOut?'You have signed out.':sessionExpiredMessage)}});
 window.cmsAuthReady=true;
 check({initial:true});
