@@ -28,6 +28,10 @@
   ],
   "rewrites": [
     {
+      "source": "/blog/:slug/",
+      "destination": "/blog/article/"
+    },
+    {
       "source": "/robots.txt",
       "destination": "/api/seo-file?type=robots"
     },
