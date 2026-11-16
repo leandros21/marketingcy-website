@@ -65,6 +65,10 @@ const rolesStore={
  async blogList(){const {data,error}=await supabase.from('cms_blog_posts').select('*').order('updated_at',{ascending:false});if(error)throw error;return (data||[]).filter(p=>window.cmsUserRole!=='contributor'||p.author_id===window.cmsCurrentUserId)},
  async blogSave(p){const {data:{user},error:ue}=await supabase.auth.getUser();if(ue||!user)throw Error('Please sign in');const payload={slug:p.slug,title:p.title,body:p.body||'',seo_title:p.meta||'',meta_description:p.description||'',status:p.status==='Published'?'published':'draft',updated_at:new Date().toISOString(),...(p.status==='Published'?{published_at:new Date().toISOString()}:{})};if(p.id){const {data,error}=await supabase.from('cms_blog_posts').update(payload).eq('id',p.id).select().single();if(error)throw error;return data}const {data,error}=await supabase.from('cms_blog_posts').insert({...payload,author_id:user.id}).select().single();if(error)throw error;return data}
 };window.marketingcyRolesStore=rolesStore;
+window.marketingcyHomepageBlogStore={
+ async load(){const {data,error}=await supabase.from('cms_homepage_blog').select('slugs').eq('id',1).single();if(error)throw error;return data.slugs||[]},
+ async save(slugs){const {error}=await supabase.from('cms_homepage_blog').update({slugs,updated_at:new Date().toISOString()}).eq('id',1);if(error)throw error}
+};
 let sequence=0;
 let passwordSetupPending=cmsLinkType==='invite'||cmsLinkType==='recovery';
 const passwordForm=document.getElementById('auth-set-password-form'),loginForm=document.getElementById('auth-form'),forgotButton=document.getElementById('auth-forgot');
