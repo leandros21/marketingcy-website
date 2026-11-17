@@ -1,0 +1,2 @@
+/* Published CMS JSON-LD is loaded on every public page; no draft content is exposed. */
+(async()=>{try{const r=await fetch('/api/seo-file?type=schema',{cache:'no-store'});if(!r.ok)return;const data=await r.json();if(!data||typeof data!=='object'||Array.isArray(data))return;const tag=document.createElement('script');tag.type='application/ld+json';tag.id='marketingcy-published-schema';tag.textContent=JSON.stringify(data).replace(/</g,'\\u003c');document.head.appendChild(tag)}catch(e){console.warn('MarketingCy structured data unavailable',e)}})();
