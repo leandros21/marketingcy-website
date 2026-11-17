@@ -1,0 +1,56 @@
+name: Restore original portfolio photographs
+on:
+  push:
+    paths:
+      - 'blog/marketingcy-6-original-portfolio-images.zip'
+      - '.github/workflows/restore-portfolio-photographs.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Validate archive and restore six original images to CMS branch
+        run: |
+          git fetch origin feature/marketingcy-custom-cms
+          python3 - <<'PY'
+          import zipfile, pathlib, subprocess, sys
+          archive=pathlib.Path('blog/marketingcy-6-original-portfolio-images.zip')
+          if not archive.is_file(): sys.exit('Waiting for portfolio ZIP upload to blog/')
+          expected={
+          'assets/portfolio/2022/10/cosea-portfolio-2-500x375.png',
+          'assets/portfolio/2020/03/web-developers-cyprus-500x375.png',
+          'assets/portfolio/2020/03/real-estate-agent-500x375.png',
+          'assets/portfolio/2015/12/website-design-properties-500x375.png',
+          'assets/portfolio/2017/03/website-development-500x375.png',
+          'assets/portfolio/2020/03/web-development-forex-500x375.png'}
+          with zipfile.ZipFile(archive) as z:
+            if set(z.namelist())!=expected or z.testzip() is not None: sys.exit('Invalid portfolio image archive')
+            images={name:z.read(name) for name in expected}
+            if any(not data for data in images.values()):sys.exit('Empty image')
+          subprocess.check_call(['git','checkout','feature/marketingcy-custom-cms'])
+          for name,data in images.items():
+            path=pathlib.Path(name);path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(data)
+          page=pathlib.Path('our-work/index.html')
+          text=page.read_text()
+          for name in sorted(expected):
+            old='https://www.marketingcy.com/wp-content/uploads/'+name.removeprefix('assets/portfolio/')
+            new='/'+name
+            if text.count(old)!=1:sys.exit('Unexpected image reference count for '+name)
+            text=text.replace(old,new)
+          page.write_text(text)
+          subprocess.check_call(['git','add','our-work/index.html']+sorted(expected))
+          PY
+      - name: Commit six restored portfolio photos
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git diff --cached --quiet; then
+            git commit -m "Restore six original portfolio project images"
+            git push origin HEAD:feature/marketingcy-custom-cms
+          fi
