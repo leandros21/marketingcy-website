@@ -1,0 +1,54 @@
+name: Copy restored blog images to CMS branch
+on:
+  push:
+    paths:
+      - '.github/workflows/copy-blog-images-to-cms.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  copy-images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/marketingcy-custom-cms
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Copy only 13 verified image files from main
+        run: |
+          git fetch origin main
+          python3 - <<'PY'
+          import subprocess, pathlib, sys
+          expected = [
+          'assets/blog/2020/03/fb.jpg',
+          'assets/blog/2020/03/email-marketing-article.png',
+          'assets/blog/2020/03/6-benefits-seo.png',
+          'assets/blog/2020/03/6-marketing-trends.jpg',
+          'assets/blog/2023/08/upscaled.png',
+          'assets/blog/2020/03/marketing-propaganda-article.jpg',
+          'assets/blog/2020/03/google-adds-brand-name.png',
+          'assets/blog/2023/06/hiring-digital-marketing-agency-cyprus-2.png',
+          'assets/blog/2020/03/seo-in-cyprus.png',
+          'assets/blog/2020/03/coronavirus-marketing.png',
+          'assets/blog/2020/03/digital-marketing-and-tourism-blog.jpg',
+          'assets/blog/2020/03/keywords-ranking-1.png',
+          'assets/blog/2020/03/seo-services-agency-cyprus.png',
+          ]
+          for p in expected:
+            data = subprocess.check_output(['git','show','origin/main:'+p])
+            if not data: sys.exit('Empty image '+p)
+            path=pathlib.Path(p)
+            path.parent.mkdir(parents=True,exist_ok=True)
+            path.write_bytes(data)
+          subprocess.check_call(['git','add','--']+expected)
+          print('Copied exactly 13 original images to CMS branch')
+          PY
+      - name: Commit and push images only
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git diff --cached --quiet; then
+            git commit -m "Add original 13 blog images to CMS branch"
+            git push origin HEAD:feature/marketingcy-custom-cms
+          fi
