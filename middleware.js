@@ -8,7 +8,8 @@ export default async function middleware(request){
   const url=new URL(request.url);
   if(Date.now()-updated>60000){try{const response=await fetch(endpoint,{headers:{apikey},signal:AbortSignal.timeout(2500)});if(response.ok){const data=await response.json();if(Array.isArray(data)){rules=data;updated=Date.now()}}}catch(e){/* Keep existing cached rules; never block the website. */}}
   const pathname=url.pathname;
-  const rule=rules.find(x=>x.source===pathname||x.source===pathname.replace(/\\/$/,'')+'/'||x.source.replace(/\\/$/,'')===pathname.replace(/\\/$/,''));
+  const normalized=pathname.endsWith('/')?pathname.slice(0,-1):pathname;
+  const rule=rules.find(x=>{const source=String(x.source||'');return source===pathname||(source.endsWith('/')?source.slice(0,-1):source)===normalized;});
   if(!rule)return next();
   const destination=String(rule.destination||'');
   let target;
