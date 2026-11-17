@@ -1,0 +1,57 @@
+name: Restore original blog thumbnails
+on:
+  push:
+    paths:
+      - '.github/workflows/restore-blog-thumbnails.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: true
+      - name: Extract exactly 13 verified blog images
+        run: |
+          python3 - <<'PY'
+          import zipfile, pathlib, sys
+          archive = pathlib.Path('blog/marketingcy-13-original-blog-images.zip')
+          expected = {
+            'assets/blog/2020/03/fb.jpg',
+            'assets/blog/2020/03/email-marketing-article.png',
+            'assets/blog/2020/03/6-benefits-seo.png',
+            'assets/blog/2020/03/6-marketing-trends.jpg',
+            'assets/blog/2023/08/upscaled.png',
+            'assets/blog/2020/03/marketing-propaganda-article.jpg',
+            'assets/blog/2020/03/google-adds-brand-name.png',
+            'assets/blog/2023/06/hiring-digital-marketing-agency-cyprus-2.png',
+            'assets/blog/2020/03/seo-in-cyprus.png',
+            'assets/blog/2020/03/coronavirus-marketing.png',
+            'assets/blog/2020/03/digital-marketing-and-tourism-blog.jpg',
+            'assets/blog/2020/03/keywords-ranking-1.png',
+            'assets/blog/2020/03/seo-services-agency-cyprus.png',
+          }
+          with zipfile.ZipFile(archive) as z:
+            names = set(z.namelist())
+            if names != expected: sys.exit('Archive contents differ from expected 13 files')
+            if z.testzip() is not None: sys.exit('Corrupted archive')
+            for name in sorted(expected):
+              data = z.read(name)
+              if not data: sys.exit('Empty file: '+name)
+              target = pathlib.Path(name)
+              target.parent.mkdir(parents=True, exist_ok=True)
+              target.write_bytes(data)
+          print('Restored exactly 13 original blog thumbnails')
+          PY
+      - name: Commit restored images
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/blog/2020/03 assets/blog/2023/06 assets/blog/2023/08
+          if ! git diff --cached --quiet; then
+            git commit -m "Restore 13 original blog thumbnails"
+            git push origin HEAD:main
+          fi
