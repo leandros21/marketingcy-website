@@ -1,0 +1,50 @@
+name: Restore six portfolio images from uploaded originals
+on:
+  push:
+    paths:
+      - '.github/workflows/restore-uploaded-portfolio.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/marketingcy-custom-cms
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Copy six uploaded originals and update portfolio references
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          mkdir -p assets/portfolio
+          for file in cosea-portfolio-2-500x375.png web-developers-cyprus-500x375.png real-estate-agent-500x375.png website-design-properties-500x375.png website-development-500x375.png web-development-forex-500x375.png; do
+            git show "origin/main:$file" > "assets/portfolio/$file"
+            test -s "assets/portfolio/$file"
+            file "assets/portfolio/$file" | grep -q 'PNG image data'
+          done
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('our-work/index.html')
+          s=p.read_text()
+          files={
+            '2022/10/cosea-portfolio-2-500x375.png':'cosea-portfolio-2-500x375.png',
+            '2020/03/web-developers-cyprus-500x375.png':'web-developers-cyprus-500x375.png',
+            '2020/03/real-estate-agent-500x375.png':'real-estate-agent-500x375.png',
+            '2015/12/website-design-properties-500x375.png':'website-design-properties-500x375.png',
+            '2017/03/website-development-500x375.png':'website-development-500x375.png',
+            '2020/03/web-development-forex-500x375.png':'web-development-forex-500x375.png',
+          }
+          for old,filename in files.items():
+            before='https://www.marketingcy.com/wp-content/uploads/'+old
+            assert before in s, f'Missing expected image reference: {before}'
+            s=s.replace(before,'/assets/portfolio/'+filename)
+          p.write_text(s)
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/portfolio our-work/index.html
+          git commit -m "Restore six original portfolio thumbnails" || exit 0
+          git push origin HEAD:feature/marketingcy-custom-cms
