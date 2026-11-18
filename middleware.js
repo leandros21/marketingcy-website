@@ -2,11 +2,12 @@ import { next } from '@vercel/functions';
 const endpoint='https://lgrqurlpkogsbiidmuaa.supabase.co/rest/v1/cms_seo_redirects?select=source,destination';
 const apikey='sb_publishable_66YqqBDBC3TwHFeVu9gCDg_r1mDPJB_';
 let rules=[],updated=0;
-export const config={matcher:['/((?!api/|assets/|cms/|_vercel/|favicon.ico|robots.txt|llms.txt|sitemap.xml).*)']};
+export const config={matcher:['/((?!_vercel/).*)']};
 export default async function middleware(request){
   if(request.method!=='GET'&&request.method!=='HEAD')return next();
   const url=new URL(request.url);
   if(url.hostname==='marketingcy.com'){url.hostname='www.marketingcy.com';return new Response(null,{status:301,headers:{Location:url.toString(),'Cache-Control':'public, max-age=0, s-maxage=3600'}});}
+  if(/^(\/api\/|\/assets\/|\/cms\/|\/favicon\.ico$|\/robots\.txt$|\/llms\.txt$|\/sitemap\.xml$)/.test(url.pathname))return next();
 
   if(Date.now()-updated>60000){try{const response=await fetch(endpoint,{headers:{apikey},signal:AbortSignal.timeout(2500)});if(response.ok){const data=await response.json();if(Array.isArray(data)){rules=data;updated=Date.now()}}}catch(e){/* Keep existing cached rules; never block the website. */}}
   const pathname=url.pathname;
