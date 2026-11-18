@@ -1,0 +1,63 @@
+name: Restore six original portfolio photos
+on:
+  push:
+    paths:
+      - 'blog/marketingcy-6-original-portfolio-images.zip'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/marketingcy-custom-cms
+          fetch-depth: 0
+      - name: Fetch portfolio photo archive from main
+        run: |
+          git fetch origin main
+          git show origin/main:blog/marketingcy-6-original-portfolio-images.zip > /tmp/portfolio.zip
+      - name: Validate, restore and update only six portfolio photos
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile,sys
+          expected = {
+            '2022/10/cosea-portfolio-2-500x375.png',
+            '2020/03/web-developers-cyprus-500x375.png',
+            '2020/03/real-estate-agent-500x375.png',
+            '2015/12/website-design-properties-500x375.png',
+            '2017/03/website-development-500x375.png',
+            '2020/03/web-development-forex-500x375.png'
+          }
+          with zipfile.ZipFile('/tmp/portfolio.zip') as z:
+            actual=set(z.namelist())
+            wanted={'assets/portfolio/'+x for x in expected}
+            if actual!=wanted: sys.exit('Unexpected portfolio archive contents')
+            if z.testzip() is not None: sys.exit('Archive integrity check failed')
+            for name in sorted(wanted):
+              data=z.read(name)
+              if not data: sys.exit('Empty image: '+name)
+              target=Path(name)
+              target.parent.mkdir(parents=True,exist_ok=True)
+              target.write_bytes(data)
+          page=Path('our-work/index.html')
+          html=page.read_text()
+          for name in sorted(expected):
+            old='https://www.marketingcy.com/wp-content/uploads/'+name
+            new='/assets/portfolio/'+name
+            if html.count(old)!=1: sys.exit('Expected one reference for '+name+', got '+str(html.count(old)))
+            html=html.replace(old,new)
+          page.write_text(html)
+          print('Restored six images and six matching references')
+          PY
+      - name: Commit only portfolio images and their page references
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/portfolio our-work/index.html
+          if ! git diff --cached --quiet; then
+            git commit -m "Restore six original portfolio photographs"
+            git push origin HEAD:feature/marketingcy-custom-cms
+          fi
