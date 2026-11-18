@@ -11,7 +11,7 @@ export default async function handler(req,res){
   if(!api.ok)throw Error('CMS unavailable');
   const posts=await api.json();
   if(!posts.length)return res.status(404).send('Article not found');
-  const origin='https://marketingcy.com';
+  const origin='https://www.marketingcy.com';
   const page=await fetch(origin+'/blog/article/',{signal:AbortSignal.timeout(6000)});
   if(!page.ok)throw Error('Article template unavailable');
   let html=await page.text();
