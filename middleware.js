@@ -6,6 +6,8 @@ export const config={matcher:['/((?!api/|assets/|cms/|_vercel/|favicon.ico|robot
 export default async function middleware(request){
   if(request.method!=='GET'&&request.method!=='HEAD')return next();
   const url=new URL(request.url);
+  if(url.hostname==='marketingcy.com'){url.hostname='www.marketingcy.com';return new Response(null,{status:301,headers:{Location:url.toString(),'Cache-Control':'public, max-age=0, s-maxage=3600'}});}
+
   if(Date.now()-updated>60000){try{const response=await fetch(endpoint,{headers:{apikey},signal:AbortSignal.timeout(2500)});if(response.ok){const data=await response.json();if(Array.isArray(data)){rules=data;updated=Date.now()}}}catch(e){/* Keep existing cached rules; never block the website. */}}
   const pathname=url.pathname;
   const normalized=pathname.endsWith('/')?pathname.slice(0,-1):pathname;
