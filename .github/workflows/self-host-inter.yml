@@ -1,0 +1,53 @@
+name: Self-host MarketingCy Inter font
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/self-host-inter.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  font:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/marketingcy-custom-cms
+          fetch-depth: 0
+      - name: Download Inter WOFF2 and replace remote font imports
+        run: |
+          python3 - <<'PY'
+          import pathlib, re, urllib.request
+          url='https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap'
+          req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'})
+          css=urllib.request.urlopen(req,timeout=25).read().decode()
+          blocks=re.findall(r'/\*\s*latin\s*\*/\s*(@font-face\s*\{[^}]+\})',css,re.S)
+          if not blocks: raise RuntimeError('Google Fonts did not provide a latin WOFF2 font-face')
+          block=blocks[-1]
+          source=re.search(r'url\((https://[^)]+\.woff2)\)',block)
+          if not source: raise RuntimeError('No WOFF2 source found')
+          font=urllib.request.urlopen(source.group(1),timeout=25).read()
+          if font[:4]!=b'wOF2': raise RuntimeError('Downloaded font is not WOFF2')
+          folder=pathlib.Path('assets/fonts');folder.mkdir(parents=True,exist_ok=True)
+          (folder/'inter-latin.woff2').write_bytes(font)
+          font_css="@font-face{font-family:'Inter';font-style:normal;font-weight:400 800;font-display:swap;src:url('/assets/fonts/inter-latin.woff2') format('woff2');}\n"
+          (folder/'inter.css').write_text(font_css)
+          remote=re.compile(r"@import\s+url\(['\"]https://fonts\.googleapis\.com/css2\?family=Inter[^'\"]*['\"]\)\s*;?")
+          changed=0
+          for p in pathlib.Path('.').rglob('*.html'):
+            if '.git' in p.parts: continue
+            s=p.read_text()
+            updated,n=remote.subn('',s)
+            if n:
+              updated=updated.replace('<head>','<head><link rel="preload" href="/assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin><link rel="stylesheet" href="/assets/fonts/inter.css">',1)
+              p.write_text(updated);changed+=1
+          print('Updated',changed,'HTML files; font bytes:',len(font))
+          if changed<8: raise RuntimeError('Unexpectedly few pages updated')
+          PY
+      - name: Commit self-hosted fonts to production branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/fonts '*.html' || true
+          git add -u
+          git diff --cached --quiet || (git commit -m "Self-host Inter font across website pages" && git push origin HEAD:feature/marketingcy-custom-cms)
