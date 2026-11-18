@@ -27,6 +27,20 @@ export default async function handler(req,res){
  const visitorHash=createHash('sha256').update(token+':'+ip).digest('hex');
  try{
  const r=await fetch('https://lgrqurlpkogsbiidmuaa.supabase.co/rest/v1/rpc/'+(contact?'submit_marketingcy_contact':'submit_marketingcy_enquiry'),{method:'POST',headers:{apikey:'sb_publishable_66YqqBDBC3TwHFeVu9gCDg_r1mDPJB_','Content-Type':'application/json'},body:JSON.stringify(contact?{p_token:token,p_hash:visitorHash,p_name:name,p_email:email,p_message:message}:{p_token:token,p_hash:visitorHash,p_name:name,p_phone:telephone,p_service:service})});
- const data=await r.json();if(!r.ok)throw Error('Database rejected submission');if(!data.ok)return res.status(429).json({error:data.error||'Submission limit reached'});return res.status(200).json({ok:true,message:'Your enquiry was received successfully.'});
+ const data=await r.json();if(!r.ok)throw Error('Database rejected submission');if(!data.ok)return res.status(429).json({error:data.error||'Submission limit reached'});
+ // A failed notification must never discard an enquiry already saved to Supabase.
+ const resendKey=process.env.RESEND_API_KEY;
+ const recipient=process.env.ENQUIRY_NOTIFICATION_EMAIL;
+ if(resendKey&&recipient){
+  try{
+   const fields=contact?[['Name',name],['Email',email],['Message',message]]:[['Name',name],['Telephone',telephone],['Service',service]];
+   const textBody=['New MarketingCy '+(contact?'contact message':'consultation enquiry'),'','Submitted: '+new Date().toISOString(),'','Details:',...fields.map(([k,v])=>k+': '+v),'','Saved in MarketingCy Supabase CMS.'].join('\\n');
+   const emailPayload={from:'MarketingCy Enquiries <notifications@marketingcy.com>',to:[recipient],subject:'New MarketingCy '+(contact?'contact message':'consultation enquiry')+' — '+name,text:textBody};
+   if(contact)emailPayload.reply_to=email;
+   const notification=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:'Bearer '+resendKey,'Content-Type':'application/json'},body:JSON.stringify(emailPayload),signal:AbortSignal.timeout(8000)});
+   if(!notification.ok)console.error('Resend notification failed with HTTP status',notification.status);
+  }catch(err){console.error('Resend notification delivery error',err?.message||'unknown')}
+ }else{console.warn('Resend notification not configured')}
+ return res.status(200).json({ok:true,message:'Your enquiry was received successfully.'});
  }catch(e){return res.status(503).json({error:'Unable to send your enquiry right now. Please try again later.'})}
 }
