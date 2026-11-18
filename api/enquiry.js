@@ -13,7 +13,16 @@ export default async function handler(req,res){
  const body=req.body||{};
  if(typeof body.website==='string'&&body.website.trim())return res.status(400).json({error:'Invalid submission'});
  const name=String(body.name||'').trim(),telephone=String(body.telephone||'').trim(),service=String(body.service||'').trim(),email=String(body.email||'').trim(),message=String(body.message||'').trim(),contact=body.formType==='contact';
- if(name.length<2||name.length>120||(contact?(email.length<5||email.length>254||!email.includes('@')||message.length<5||message.length>5000):(telephone.length<5||telephone.length>40||service.length<2||service.length>100)))return res.status(400).json({error:'Please complete all required fields'});
+ if(name.length<2)return res.status(400).json({error:'Name is too short. Please enter at least 2 characters.'});
+ if(name.length>120)return res.status(400).json({error:'Name is too long. Please use 120 characters or fewer.'});
+ if(contact){
+  if(email.length<5||email.length>254||!email.includes('@'))return res.status(400).json({error:'Please enter a valid email address.'});
+  if(message.length<5)return res.status(400).json({error:'Message is too short. Please enter at least 5 characters.'});
+  if(message.length>5000)return res.status(400).json({error:'Message is too long. Please use 5,000 characters or fewer.'});
+ }else{
+  if(telephone.length<5||telephone.length>40)return res.status(400).json({error:'Please enter a valid telephone number (5–40 characters).'});
+  if(service.length<2||service.length>100)return res.status(400).json({error:'Please select a valid service.'});
+ }
  const challenge=String(body.mathChallenge||''),answer=String(body.mathAnswer??'').trim();
  const parts=challenge.split('.');
  if(parts.length!==2||!/^[a-f0-9]{64}$/.test(parts[1])||!/^[0-9]+$/.test(answer))return res.status(400).json({error:'Invalid math verification. Please try again.'});
