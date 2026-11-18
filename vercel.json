@@ -2,27 +2,27 @@
   "redirects": [
     {
       "source": "/seo/",
-      "destination": "/seo-cyprus/",
+      "destination": "https://www.marketingcy.com/seo-cyprus/",
       "permanent": true
     },
     {
       "source": "/web-design/",
-      "destination": "/web-development-cyprus/",
+      "destination": "https://www.marketingcy.com/web-development-cyprus/",
       "permanent": true
     },
     {
       "source": "/ppc/",
-      "destination": "/ppc-agency-cyprus/",
+      "destination": "https://www.marketingcy.com/ppc-agency-cyprus/",
       "permanent": true
     },
     {
       "source": "/social-media/",
-      "destination": "/social-media-advertising-solutions/",
+      "destination": "https://www.marketingcy.com/social-media-advertising-solutions/",
       "permanent": true
     },
     {
       "source": "/email-marketing/",
-      "destination": "/email-marketing-solutions/",
+      "destination": "https://www.marketingcy.com/email-marketing-solutions/",
       "permanent": true
     }
   ],
