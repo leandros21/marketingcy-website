@@ -29,7 +29,7 @@
   "rewrites": [
     {
       "source": "/blog/:slug/",
-      "destination": "/blog/article/"
+      "destination": "/api/blog-page?slug=:slug"
     },
     {
       "source": "/robots.txt",
