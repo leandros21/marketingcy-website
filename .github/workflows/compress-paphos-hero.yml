@@ -1,0 +1,58 @@
+name: Compress Paphos hero image
+on:
+  push:
+    branches:
+      - feature/marketingcy-custom-cms
+    paths:
+      - .github/workflows/compress-paphos-hero.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  compress:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/marketingcy-custom-cms
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install Pillow
+      - name: Compress image to 350-400 KB without resizing
+        run: |
+          python - <<'PY'
+          from PIL import Image
+          from io import BytesIO
+          from pathlib import Path
+          p=Path("paphos marketing agency.jpg")
+          backup=Path("paphos marketing agency.original.jpg")
+          data=p.read_bytes()
+          if not backup.exists(): backup.write_bytes(data)
+          im=Image.open(BytesIO(data)).convert("RGB")
+          candidates=[]
+          for q in range(95,44,-1):
+              out=BytesIO()
+              im.save(out,format="JPEG",quality=q,optimize=True,progressive=True,subsampling=0)
+              n=len(out.getvalue())
+              if 350000<=n<=400000:
+                  candidates.append((q,out.getvalue()))
+          if not candidates:
+              for q in range(95,34,-1):
+                  out=BytesIO()
+                  im.save(out,format="JPEG",quality=q,optimize=True,progressive=True)
+                  n=len(out.getvalue())
+                  if 350000<=n<=400000:
+                      candidates.append((q,out.getvalue()))
+          if not candidates:
+              raise SystemExit("No quality level yielded 350-400 KB without resizing; leaving original unchanged")
+          q,encoded=max(candidates,key=lambda x:x[0])
+          p.write_bytes(encoded)
+          print(f"Original: {len(data)} bytes; compressed: {len(encoded)} bytes; quality: {q}; dimensions: {im.size}")
+          PY
+      - name: Commit compressed image and backup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "paphos marketing agency.jpg" "paphos marketing agency.original.jpg"
+          git diff --cached --quiet || (git commit -m "Compress Paphos hero to 350-400 KB, retain original backup" && git push)
