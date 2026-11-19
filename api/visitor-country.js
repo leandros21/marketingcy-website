@@ -1,0 +1,1 @@
+export default function handler(req,res){res.setHeader('Cache-Control','private, no-store');if(req.method!=='GET')return res.status(405).json({error:'Method not allowed'});const country=String(req.headers['x-vercel-ip-country']||'').toUpperCase();return res.status(200).json({country:/^[A-Z]{2}$/.test(country)?country:null})}
