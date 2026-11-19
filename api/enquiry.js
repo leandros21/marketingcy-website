@@ -18,6 +18,7 @@ export default async function handler(req,res){
  if(contact){
   if(email.length<5||email.length>254||!email.includes('@'))return res.status(400).json({error:'Please enter a valid email address.'});
   if(message.length<5)return res.status(400).json({error:'Message is too short. Please enter at least 5 characters.'});
+  if(telephone&&(telephone.length>40||!/^\+?[0-9 ()-]{5,40}$/.test(telephone)))return res.status(400).json({error:'Please enter a valid telephone number.'});
   if(message.length>5000)return res.status(400).json({error:'Message is too long. Please use 5,000 characters or fewer.'});
  }else{
   if(telephone.length<5||telephone.length>40)return res.status(400).json({error:'Please enter a valid telephone number (5–40 characters).'});
@@ -35,14 +36,14 @@ export default async function handler(req,res){
  const ip=String(req.headers['x-vercel-forwarded-for']||forwarded||req.socket?.remoteAddress||'unknown').split(',')[0].trim();
  const visitorHash=createHash('sha256').update(token+':'+ip).digest('hex');
  try{
- const r=await fetch('https://lgrqurlpkogsbiidmuaa.supabase.co/rest/v1/rpc/'+(contact?'submit_marketingcy_contact':'submit_marketingcy_enquiry'),{method:'POST',headers:{apikey:'sb_publishable_66YqqBDBC3TwHFeVu9gCDg_r1mDPJB_','Content-Type':'application/json'},body:JSON.stringify(contact?{p_token:token,p_hash:visitorHash,p_name:name,p_email:email,p_message:message}:{p_token:token,p_hash:visitorHash,p_name:name,p_phone:telephone,p_service:service})});
+ const r=await fetch('https://lgrqurlpkogsbiidmuaa.supabase.co/rest/v1/rpc/'+(contact?'submit_marketingcy_contact':'submit_marketingcy_enquiry'),{method:'POST',headers:{apikey:'sb_publishable_66YqqBDBC3TwHFeVu9gCDg_r1mDPJB_','Content-Type':'application/json'},body:JSON.stringify(contact?{p_token:token,p_hash:visitorHash,p_name:name,p_email:email,p_message:telephone?'Telephone: '+telephone+'\n\n'+message:message}:{p_token:token,p_hash:visitorHash,p_name:name,p_phone:telephone,p_service:service})});
  const data=await r.json();if(!r.ok)throw Error('Database rejected submission');if(!data.ok)return res.status(429).json({error:data.error||'Submission limit reached'});
  // A failed notification must never discard an enquiry already saved to Supabase.
  const resendKey=process.env.RESEND_API_KEY;
  const recipient=process.env.ENQUIRY_NOTIFICATION_EMAIL;
  if(resendKey&&recipient){
   try{
-   const fields=contact?[['Name',name],['Email',email],['Message',message]]:[['Name',name],['Telephone',telephone],['Service',service]];
+   const fields=contact?[['Name',name],['Email',email],...(telephone?[['Telephone',telephone]]:[]),['Message',message]]:[['Name',name],['Telephone',telephone],['Service',service]];
    const receivedAt=new Date();
    const submitted=receivedAt.toLocaleString('en-GB',{timeZone:'Europe/Nicosia',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false})+' (Cyprus time)';
    const escapeHtml=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
