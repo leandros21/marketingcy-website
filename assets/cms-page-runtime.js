@@ -1,7 +1,7 @@
 (async function(){
  const slug=location.pathname.endsWith('/')?location.pathname:location.pathname+'/';
  const nodes=[...document.querySelectorAll(slug==='/pricing/'?'main h1,main h2,main h3,main p,main .price strong,main .inclusions li':'main h1,main h2,main h3,main p')].filter(n=>!n.closest('form'));
- const url='https://lgrqurlpkogsbiidmuaa.supabase.co/rest/v1/cms_pages?slug=eq.'+encodeURIComponent(slug)+'&status=eq.published&select=published_body,published_heading,published_summary,published_seo_title,published_meta_description';
+ const url='https://lgrqurlpkogsbiidmuaa.supabase.co/rest/v1/cms_published_pages?slug=eq.'+encodeURIComponent(slug)+'&select=published_body,published_heading,published_summary,published_seo_title,published_meta_description';
  try{
   const r=await fetch(url,{cache:'no-store',headers:{apikey:'sb_publishable_66YqqBDBC3TwHFeVu9gCDg_r1mDPJB_'}});
   if(!r.ok)throw Error('Published content request failed ('+r.status+')');
