@@ -3,7 +3,7 @@
  const nodes=[...document.querySelectorAll(slug==='/pricing/'?'main h1,main h2,main h3,main p,main .price strong,main .inclusions li':'main h1,main h2,main h3,main p')].filter(n=>!n.closest('form'));
  const url='https://lgrqurlpkogsbiidmuaa.supabase.co/rest/v1/cms_pages?slug=eq.'+encodeURIComponent(slug)+'&status=eq.published&select=published_body,published_heading,published_summary,published_seo_title,published_meta_description';
  try{
-  const r=await fetch(url,{headers:{apikey:'sb_publishable_66YqqBDBC3TwHFeVu9gCDg_r1mDPJB_'}});
+  const r=await fetch(url,{cache:'no-store',headers:{apikey:'sb_publishable_66YqqBDBC3TwHFeVu9gCDg_r1mDPJB_'}});
   if(!r.ok)return;
   const data=(await r.json())[0];if(!data)return;
   if(data.published_seo_title)document.title=data.published_seo_title;
