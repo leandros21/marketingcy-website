@@ -13,3 +13,9 @@
 .services-dropdown .services-menu .service-entry+.service-entry{border-top:1px solid #f0f3f9}
 @media(max-width:760px){.services-dropdown .services-menu{left:0;transform:translateY(9px);width:min(420px,calc(100vw - 32px))}.services-dropdown[open] .services-menu{transform:translateY(0)}.services-dropdown .services-menu .service-entry{padding:10px}.service-icon{width:42px;height:42px}}
 @media(prefers-reduced-motion:reduce){.services-dropdown .services-menu{transition:none}}
+
+/* Shared Services chevron: covers both historical markup variants. */
+.services-dropdown summary .services-toggle{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-width:20px;min-height:25px;cursor:pointer}
+.services-dropdown summary .services-toggle .chevron,.services-dropdown summary .services-toggle .dropdown-chevron{display:inline-block!important;box-sizing:border-box!important;width:8px!important;height:8px!important;flex:0 0 8px!important;border:0!important;border-right:2px solid currentColor!important;border-bottom:2px solid currentColor!important;border-radius:0!important;background:none!important;transform:rotate(45deg)!important;transform-origin:center!important;transition:transform .22s ease!important;margin:0 0 4px!important;font-size:0!important}
+.services-dropdown[open] summary .services-toggle .chevron,.services-dropdown[open] summary .services-toggle .dropdown-chevron{transform:rotate(225deg)!important;margin:0 0 4px!important}
+@media(prefers-reduced-motion:reduce){.services-dropdown summary .services-toggle .chevron,.services-dropdown summary .services-toggle .dropdown-chevron{transition:none!important}}
