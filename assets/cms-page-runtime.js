@@ -1,6 +1,6 @@
 (async function(){
  const slug=location.pathname.endsWith('/')?location.pathname:location.pathname+'/';
- const nodes=[...document.querySelectorAll('main h1,main h2,main h3,main p')].filter(n=>!n.closest('form'));
+ const nodes=[...document.querySelectorAll(slug==='/pricing/'?'main h1,main h2,main h3,main p,main .price strong,main .inclusions li':'main h1,main h2,main h3,main p')].filter(n=>!n.closest('form'));
  const url='https://lgrqurlpkogsbiidmuaa.supabase.co/rest/v1/cms_pages?slug=eq.'+encodeURIComponent(slug)+'&status=eq.published&select=published_body,published_heading,published_summary,published_seo_title,published_meta_description';
  try{
   const r=await fetch(url,{headers:{apikey:'sb_publishable_66YqqBDBC3TwHFeVu9gCDg_r1mDPJB_'}});
@@ -18,7 +18,7 @@
    clean(template.content);return template.innerHTML
   }
   body.blocks.forEach((block,i)=>{const node=nodes[i];if(node&&block&&node.tagName===block.tag&&typeof block.html==='string'&&block.html.length<30000){node.innerHTML=safe(block.html)}});
-  if(data.published_heading){const h=document.querySelector('main h1');if(h)h.textContent=data.published_heading}
-  if(data.published_summary){const hero=document.querySelector('main .hero p');if(hero)hero.textContent=data.published_summary}
+  if(slug!=='/pricing/'&&data.published_heading){const h=document.querySelector('main h1');if(h)h.textContent=data.published_heading}
+  if(slug!=='/pricing/'&&data.published_summary){const hero=document.querySelector('main .hero p');if(hero)hero.textContent=data.published_summary}
  }catch(e){console.warn('CMS content unavailable',e)}
 })();
