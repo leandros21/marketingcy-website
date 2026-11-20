@@ -1,0 +1,7 @@
+/* MarketingCy published Custom Code loader. Drafts are never exposed. */
+(async function(){
+const endpoint='https://lgrqurlpkogsbiidmuaa.supabase.co/rest/v1/cms_published_custom_code?select=head,body_start,body_end&section=eq.custom';
+const key='sb_publishable_66YqqBDBC3TwHFeVu9gCDg_r1mDPJB_';
+async function inject(markup,target){if(!markup||!markup.trim())return;const tpl=document.createElement('template');tpl.innerHTML=markup;for(const child of [...tpl.content.childNodes]){if(child.nodeType===1&&child.tagName==='SCRIPT'){const script=document.createElement('script');for(const attr of child.attributes)script.setAttribute(attr.name,attr.value);script.textContent=child.textContent;if(script.src){script.async=false;await new Promise(resolve=>{script.addEventListener('load',resolve,{once:true});script.addEventListener('error',resolve,{once:true});target.appendChild(script)})}else target.appendChild(script)}else target.appendChild(child.cloneNode(true))}}
+try{const response=await fetch(endpoint,{cache:'no-store',headers:{apikey:key}});if(!response.ok)throw Error('HTTP '+response.status);const rows=await response.json();const data=rows&&rows[0];if(!data)return;await inject(data.head,document.head);if(document.readyState==='loading')await new Promise(resolve=>document.addEventListener('DOMContentLoaded',resolve,{once:true}));await inject(data.body_start,document.body);await inject(data.body_end,document.body)}catch(error){console.warn('Published custom code could not load:',error)}
+})();
