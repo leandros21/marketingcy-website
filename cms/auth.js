@@ -15,6 +15,37 @@ const cmsLinkType=new URLSearchParams(window.location.hash.slice(1)).get('type')
 const supabase=createClient('https://lgrqurlpkogsbiidmuaa.supabase.co','sb_publishable_66YqqBDBC3TwHFeVu9gCDg_r1mDPJB_',{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:true}});
 const screen=document.getElementById('auth-screen'),app=document.getElementById('cms-app'),error=document.getElementById('auth-error'),form=document.getElementById('auth-form'),button=document.getElementById('auth-submit');
 
+// Cloudflare Turnstile is loaded only on the CMS login screen.
+const turnstileSiteKey='0x4AAAAAAGMONRQRLQQvdNe7';
+let turnstileWidgetId=null;
+let turnstileLoadPromise=null;
+function loadTurnstile(){
+ if(window.turnstile)return Promise.resolve(window.turnstile);
+ if(turnstileLoadPromise)return turnstileLoadPromise;
+ turnstileLoadPromise=new Promise((resolve,reject)=>{
+  const script=document.createElement('script');
+  script.src='https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+  script.async=true;script.defer=true;
+  script.onload=()=>window.turnstile?resolve(window.turnstile):reject(Error('Turnstile could not initialize.'));
+  script.onerror=()=>reject(Error('Could not load security verification. Check your connection and refresh.'));
+  document.head.appendChild(script);
+ }).catch(e=>{turnstileLoadPromise=null;throw e});
+ return turnstileLoadPromise;
+}
+async function ensureTurnstile(){
+ if(turnstileWidgetId!==null)return window.turnstile;
+ const ts=await loadTurnstile();
+ turnstileWidgetId=ts.render('#cms-turnstile',{sitekey:turnstileSiteKey,theme:'auto',appearance:'always'});
+ return ts;
+}
+function resetTurnstile(){
+ if(turnstileWidgetId!==null&&window.turnstile)window.turnstile.reset(turnstileWidgetId);
+}
+function showLoginChallenge(){
+ if(passwordSetupPending)return;
+ ensureTurnstile().catch(e=>{error.textContent=e.message;});
+}
+
 const pageStore={
  async load(){let result=await supabase.from('cms_pages').select('slug,title,draft_body,draft_seo_title,draft_meta_description,draft_heading,draft_summary,status').order('slug');if(result.error)return result;if(!result.data.length){const imported=window.marketingcyImportedContent||[];if(imported.length){const seed=imported.map(p=>({slug:p.slug,title:p.title.split('|')[0].trim(),draft_body:p.body,draft_seo_title:p.meta,draft_meta_description:p.description,draft_heading:p.title.split('|')[0].trim(),draft_summary:'',status:'draft'}));const inserted=await supabase.from('cms_pages').upsert(seed,{onConflict:'slug',ignoreDuplicates:true});if(inserted.error)return inserted;result=await supabase.from('cms_pages').select('slug,title,draft_body,draft_seo_title,draft_meta_description,draft_heading,draft_summary,status').order('slug')}}return result},
  async publish(p){return supabase.from('cms_pages').update({title:p.title,draft_body:p.body||'',draft_seo_title:p.meta||'',draft_meta_description:p.description||'',draft_heading:p.heading||p.title,draft_summary:p.summary||'',published_body:p.body||'',published_seo_title:p.meta||'',published_meta_description:p.description||'',published_heading:p.heading||p.title,published_summary:p.summary||'',status:'published',updated_at:new Date().toISOString()}).eq('slug',p.slug).select('slug').single()},
@@ -77,7 +108,7 @@ passwordForm.addEventListener('submit',async event=>{event.preventDefault();cons
 forgotButton?.addEventListener('click',async()=>{const email=document.getElementById('auth-email').value.trim();if(!email){error.textContent='Enter your email address above first.';return}const {error:e}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+'/cms/'});error.textContent=e?'Could not send reset email: '+e.message:'If this email is registered, a password reset link has been sent.';});
 let manualSignOut=false;
 const sessionExpiredMessage='Your session may have expired or browser storage was cleared. Please sign in again.';
-function locked(message=''){app.style.display='none';screen.style.display='grid';error.textContent=message;}
+function locked(message=''){app.style.display='none';screen.style.display='grid';error.textContent=message;showLoginChallenge();}
 async function check({initial=false}={}){
  const n=++sequence;
  try{
@@ -101,14 +132,17 @@ form.addEventListener('submit',async event=>{
   const email=document.getElementById('auth-email').value.trim();
   const password=document.getElementById('auth-password').value;
   if(!email||!password){locked('Enter your email and password to sign in.');return}
+  const ts=await ensureTurnstile();
+  const captchaToken=ts.getResponse(turnstileWidgetId);
+  if(!captchaToken){error.textContent='Complete the security verification before signing in.';return}
   const {error:signInError}=await Promise.race([
-   supabase.auth.signInWithPassword({email,password}),
+   supabase.auth.signInWithPassword({email,password,options:{captchaToken}}),
    new Promise((_,reject)=>setTimeout(()=>reject(new Error('Authentication timed out. Please check your connection and try again.')),15000))
   ]);
   if(signInError){locked('Sign-in failed: '+(signInError.message||'Check your email and password.'));return}
   await check();
  }catch(e){locked('Sign-in error: '+(e?.message||'Unable to connect to the authentication service.'))}
- finally{button.disabled=false}
+ finally{button.disabled=false;resetTurnstile()}
 });
 async function signOut(){manualSignOut=true;++sequence;locked('You have signed out.');try{await supabase.auth.signOut()}finally{manualSignOut=false;document.getElementById('auth-password').value=''}}
 document.getElementById('logout').addEventListener('click',signOut);
@@ -116,3 +150,4 @@ document.getElementById('top-logout').addEventListener('click',signOut);
 supabase.auth.onAuthStateChange((event)=>{if(event==='PASSWORD_RECOVERY'){passwordSetupPending=true;setTimeout(showPasswordSetup,0)}if(event==='SIGNED_IN'&&passwordSetupPending){setTimeout(showPasswordSetup,0)}if(event==='SIGNED_OUT'){++sequence;locked(manualSignOut?'You have signed out.':sessionExpiredMessage)}});
 window.cmsAuthReady=true;
 check({initial:true});
+showLoginChallenge();
